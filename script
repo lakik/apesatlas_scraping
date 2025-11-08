@@ -71,7 +71,7 @@ get_mediawiki_page <- function(api_url, page_title) {
   return(content)
 }
 #*********************************************************************************************************************************
-conv_wiki_to_df <- function(xt,tabxn) {
+conv_wiki_to_df <- function(xt,tabxn,bc) {
   mc=subset(xt, xt$part==tabxn & (xt$type=="Table_content" | xt$type=="Table_heading"))
   xx=strsplit(mc$content,split="<!")
   mc$content=sapply(xx,function(x){trimws(x[1])})
@@ -87,8 +87,10 @@ conv_wiki_to_df <- function(xt,tabxn) {
       headers=c("type","value")
     }
     nt=matrix(mc$content[mc$type!="Table_heading"], ncol=ncolx,byrow=T)  
-    nt=data.frame(site=rep(mc$site[1],nrow(nt)),part=rep(mc$part[1],nrow(nt)),tabx=rep(mc$tabx[1],nrow(nt)),nt)
-    colnames(nt)=c("site","part","tabx",headers)
+    nt=data.frame(site=rep(mc$site[1],nrow(nt)),country=rep("",nrow(nt)),region=rep("",nrow(nt)),nt)
+    colnames(nt)=c("site","country","region",headers)
+    nt$country=bc$country[match(nt$site,bc$site)]
+    nt$region=bc$region[match(nt$site,bc$site)]
   }else{
     nt=NA
   }    
@@ -96,7 +98,7 @@ conv_wiki_to_df <- function(xt,tabxn) {
 }
 
 #*********************************************************************************************************************************
-scrape_apesatlas <- function(path_to_save,api_url=api_url) {
+scrape_apesatlas <- function(path_to_save,api_url) {
   #*********************************************************************************************************************************
   # COLLECT PAGES
   #*********************************************************************************************************************************
@@ -136,8 +138,6 @@ scrape_apesatlas <- function(path_to_save,api_url=api_url) {
 
   xlog=list()
   tf_all=lapply(1:length(xpage),function(i){
-    print(i)
-    print(page_sel[i])
     xlog=c(i,page_sel[i])
     content=strsplit(page_content[[i]],split="\n")[[1]]
     if (length(content)!=0){
@@ -230,78 +230,79 @@ scrape_apesatlas <- function(path_to_save,api_url=api_url) {
   #*********************************************************************************************************************************
   # TABLES
   #*********************************************************************************************************************************
-
+  # "breadcrumb"
+  bc=lapply(tf_all,function(x){
+    subset(x,part=="breadcrumb")
+  })
+  bread=do.call(rbind,bc)
+  xx=gsub("[[","",bread$content,fixed=T)
+  xx=gsub("]]","",xx,fixed=T)
+  xx=matrix(unlist(strsplit(xx,split=" > ")),ncol=3,byrow=T)
+  bread=data.frame(bread,xx[,1:2])
+  colnames(bread)=c("idx","site","i","content","part","type","type2","tabx","region","country")
+  
   #------------------------------------------------------------------------------------------------------------------
   # "Site_characteristics"
   #------------------------------------------------------------------------------------------------------------------
   tabxn="Site_characteristics"
-  tabs=lapply(tf_all, FUN=conv_wiki_to_df,tabxn)
+  tabs=lapply(tf_all, FUN=conv_wiki_to_df,tabxn,bc=bread)
   sitec=do.call(rbind,tabs)
-  sitec=subset(sitec,!is.na(part))
   sitec$type=gsub(":","",sitec$type, fixed=T)
 
   #------------------------------------------------------------------------------------------------------------------
   # "Ape_status"
   #------------------------------------------------------------------------------------------------------------------
   tabxn="Ape_status"
-  tabs=lapply(tf_all, FUN=conv_wiki_to_df,tabxn)
+  tabs=lapply(tf_all, FUN=conv_wiki_to_df,tabxn,bc=bread)
   apest=do.call(rbind.fill,tabs)
-  apest=subset(apest,!is.na(part))
 
   #------------------------------------------------------------------------------------------------------------------
   # "Threats"
   #------------------------------------------------------------------------------------------------------------------
   tabxn="Threats"
-  tabs=lapply(tf_all, FUN=conv_wiki_to_df,tabxn)
+  tabs=lapply(tf_all, FUN=conv_wiki_to_df,tabxn,bc=bread)
   treat=do.call(rbind,tabs)
-  treat=subset(treat,!is.na(part))
 
   #------------------------------------------------------------------------------------------------------------------
   # "Conservation_activities"
   #------------------------------------------------------------------------------------------------------------------
   tabxn="Conservation_activities"
-  tabs=lapply(tf_all, FUN=conv_wiki_to_df,tabxn)
+  tabs=lapply(tf_all, FUN=conv_wiki_to_df,tabxn,bc=bread)
   conac=do.call(rbind,tabs)
-  conac=subset(conac,!is.na(part))
 
   #------------------------------------------------------------------------------------------------------------------
   # "Challenges"
   #------------------------------------------------------------------------------------------------------------------
   tabxn="Challenges"
-  tabs=lapply(tf_all, FUN=conv_wiki_to_df,tabxn)
+  tabs=lapply(tf_all, FUN=conv_wiki_to_df,tabxn,bc=bread)
   chall=do.call(rbind,tabs)
-  chall=subset(chall,!is.na(part))
 
   #------------------------------------------------------------------------------------------------------------------
   # "Enablers"
   #------------------------------------------------------------------------------------------------------------------
   tabxn="Enablers"
-  tabs=lapply(tf_all, FUN=conv_wiki_to_df,tabxn)
+  tabs=lapply(tf_all, FUN=conv_wiki_to_df,tabxn,bc=bread)
   enabs=do.call(rbind,tabs)
-  enabs=subset(enabs,!is.na(part))
 
   #------------------------------------------------------------------------------------------------------------------
   # "Documented_behaviours"
   #------------------------------------------------------------------------------------------------------------------
   tabxn="Documented_behaviours"
-  tabs=lapply(tf_all, FUN=conv_wiki_to_df,tabxn)
+  tabs=lapply(tf_all, FUN=conv_wiki_to_df,tabxn,bc=bread)
   behav=do.call(rbind,tabs)
-  behav=subset(behav,!is.na(part))
 
   #------------------------------------------------------------------------------------------------------------------
   # "Exposure_to_climate_change_impacts"
   #------------------------------------------------------------------------------------------------------------------
   tabxn="Exposure_to_climate_change_impacts"
-  tabs=lapply(tf_all, FUN=conv_wiki_to_df,tabxn)
+  tabs=lapply(tf_all, FUN=conv_wiki_to_df,tabxn,bc=bread)
   clima=do.call(rbind,tabs)
-  clima=subset(clima,!is.na(part))
   colnames(clima)=c("site","part","tabx","'''Value'''","'''1981-2010'''","'''2021-2050, RCP 2.6'''","'''2021-2050, RCP 6.0'''","'''2071-2099, RCP 2.6'''","'''2071-2099, RCP 6.0'''")
 
   # "Exposure_to_climate_change_impacts_2"
   tabxn="Exposure_to_climate_change_impacts_2"
-  tabs=lapply(tf_all, FUN=conv_wiki_to_df,tabxn)
+  tabs=lapply(tf_all, FUN=conv_wiki_to_df,tabxn,bc=bread)
   clima2=do.call(rbind,tabs)
-  clima2=subset(clima2,!is.na(part))
   colnames(clima2)=c("site","part","tabx","'''Type'''","'''No. of years with event (2021-2050, RCP 2.6)'''","'''% of site exposed (2021-2050, RCP 2.6)'''","'''No. of years with event (2021-2050, RCP 6.0)'''","'''% of site exposed (2021-2050, RCP 6.0)'''","'''No. of years with event (2070-2099, RCP 2.6)'''","'''% of site exposed (2070-2099, RCP 2.6)'''","'''No. of years with event (2070-2099, RCP 6.0)'''","'''% of site exposed (2070-2099, RCP 6.0)'''")
 
   #*********************************************************************************************************************************
@@ -314,7 +315,7 @@ scrape_apesatlas <- function(path_to_save,api_url=api_url) {
   write_xlsx(list(Site_characteristics=sitec,Ape_status=apest,Threats=treat,Conservation_activities=conac,Challenges=chall,Enablers=enabs,Behaviours=behav,Exposure_to_climate_1=clima,Exposure_to_climate_2=clima2),path = paste(path_to_save,"_wiki_content.xlsx",sep="/"), format_headers = F)
 
   #*********************************************************************************************************************************
-  save.image(paste(path_to_save,"_wiki_content.Rdata",sep="/"))
+  save(sitec,apest,treat,conac,chall,enabs,behav,clima,clima2,file = paste(path_to_save,"_wiki_content.Rdata",sep="/"))
   #*********************************************************************************************************************************
+  print(paste("Results for ",length(sel)," Pages were saved to your specified directory."))
 }
-
