@@ -304,14 +304,14 @@ scrape_apesatlas <- function(path_to_save,api_url) {
   tabxn="Exposure_to_climate_change_impacts"
   tabs=lapply(tf_all, FUN=conv_wiki_to_df,tabxn,bc=bread)
   clima=do.call(rbind,tabs)
-  colnames(clima)=c("site","part","tabx","'''Value'''","'''1981-2010'''","'''2021-2050, RCP 2.6'''","'''2021-2050, RCP 6.0'''","'''2071-2099, RCP 2.6'''","'''2071-2099, RCP 6.0'''")
+  colnames(clima)=c("site","country","region","Value","1981-2010","2021-2050, RCP 2.6","2021-2050, RCP 6.0","2071-2099, RCP 2.6","2071-2099, RCP 6.0")
   clima=subset(clima,!is.na(site))
 
   # "Exposure_to_climate_change_impacts_2"
   tabxn="Exposure_to_climate_change_impacts_2"
   tabs=lapply(tf_all, FUN=conv_wiki_to_df,tabxn,bc=bread)
   clima2=do.call(rbind,tabs)
-  colnames(clima2)=c("site","part","tabx","'''Type'''","'''No. of years with event (2021-2050, RCP 2.6)'''","'''% of site exposed (2021-2050, RCP 2.6)'''","'''No. of years with event (2021-2050, RCP 6.0)'''","'''% of site exposed (2021-2050, RCP 6.0)'''","'''No. of years with event (2070-2099, RCP 2.6)'''","'''% of site exposed (2070-2099, RCP 2.6)'''","'''No. of years with event (2070-2099, RCP 6.0)'''","'''% of site exposed (2070-2099, RCP 6.0)'''")
+  colnames(clima2)=c("site","country","region","Type","No. of years with event (2021-2050, RCP 2.6)","% of site exposed (2021-2050, RCP 2.6)","No. of years with event (2021-2050, RCP 6.0)","% of site exposed (2021-2050, RCP 6.0)","No. of years with event (2070-2099, RCP 2.6)","% of site exposed (2070-2099, RCP 2.6)","No. of years with event (2070-2099, RCP 6.0)","% of site exposed (2070-2099, RCP 6.0)")
   clima2=subset(clima2,!is.na(site))
 
   #*********************************************************************************************************************************
