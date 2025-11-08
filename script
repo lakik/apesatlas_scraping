@@ -321,10 +321,10 @@ scrape_apesatlas <- function(path_to_save,api_url) {
   page_sel=as.data.frame(matrix(unlist(lapply(strsplit(unlist(xlog),split=";"),function(x){x[1:3]})),ncol=3,byrow=T))
   colnames(page_sel)=c("idx","site","gibbonsite")
 
-  write_xlsx(list(Site_characteristics=sitec,Ape_status=apest,Threats=treat,Conservation_activities=conac,Challenges=chall,Enablers=enabs,Behaviours=behav,Exposure_to_climate_1=clima,Exposure_to_climate_2=clima2),path = paste(path_to_save,"_wiki_content.xlsx",sep="/"), format_headers = F)
+  write_xlsx(list(Site_characteristics=sitec,Ape_status=apest,Threats=treat,Conservation_activities=conac,Challenges=chall,Enablers=enabs,Behaviours=behav,Exposure_to_climate_1=clima,Exposure_to_climate_2=clima2),path = paste(path_to_save,"apesatlas_tables.xlsx",sep="/"), format_headers = F)
 
   #*********************************************************************************************************************************
-  save(sitec,apest,treat,conac,chall,enabs,behav,clima,clima2,file = paste(path_to_save,"_wiki_content.Rdata",sep="/"))
+  save(sitec,apest,treat,conac,chall,enabs,behav,clima,clima2,file = paste(path_to_save,"apesatlas_tables.Rdata",sep="/"))
   #*********************************************************************************************************************************
   print(paste("Results for ",length(sel)," pages have been saved in the directory you specified."))
 }
