@@ -1,0 +1,320 @@
+
+#*********************************************************************************************************************************
+# Define the base MediaWiki API URL
+#*********************************************************************************************************************************
+api_url <- "https://apesatlas.iucnapesportal.org/api.php"  # Replace with your MediaWiki instance URL
+
+#*********************************************************************************************************************************
+# LOAD FUCTIONS
+#*********************************************************************************************************************************
+# Function to get all page titles
+get_all_page_titles <- function(api_url) {
+  # Create an empty list to store titles
+  all_titles <- c()
+  # Set initial 'apcontinue' as NULL to start from the first page
+  apcontinue <- NULL
+  repeat {
+    # Create a request to the MediaWiki API
+    req <- request(api_url) %>%
+      req_body_form(
+        action = "query",
+        list = "allpages",
+        format = "json",
+        aplimit = "max",  # Request the maximum number of results per query
+        apcontinue = apcontinue  # Handle pagination
+      )
+    # Perform the request
+    response <- req %>%
+      req_perform() %>%
+      resp_body_json()
+    # Extract page titles from the response
+    pages <- response$query$allpages
+    titles <- sapply(pages, function(page) page$title)
+    # Append the titles to the list
+    all_titles <- c(all_titles, titles)
+    # Check if there's more data to fetch
+    if (!is.null(response$continue$apcontinue)) {
+      apcontinue <- response$continue$apcontinue
+    } else {
+      break  # Exit the loop if no more pages are available
+    }
+  }
+  return(all_titles)
+}
+#*********************************************************************************************************************************
+# Funktion zum Abrufen des MediaWiki-Seitenquellcodes
+get_mediawiki_page <- function(api_url, page_title) {
+  # Erstelle die API-Anfrage
+  request <- request(api_url) %>%
+    req_url_query(
+      action = "query",
+      prop = "revisions",
+      titles = page_title,
+      rvprop = "content",
+      format = "json"
+    )
+  
+  # Führe die Anfrage aus und speichere die Antwort
+  response <- request %>%
+    req_perform() %>%
+    resp_body_json()
+  
+  # Extrahiere den Quelltext aus der Antwort
+  pages <- response$query$pages
+  page_id <- names(pages)[1]
+  
+  if (page_id == "-1") {
+    stop("Seite nicht gefunden.")
+  }
+  
+  content <- pages[[page_id]]$revisions[[1]]$`*`
+  return(content)
+}
+#*********************************************************************************************************************************
+conv_wiki_to_df <- function(xt,tabxn) {
+  mc=subset(xt, xt$part==tabxn & (xt$type=="Table_content" | xt$type=="Table_heading"))
+  xx=strsplit(mc$content,split="<!")
+  mc$content=sapply(xx,function(x){trimws(x[1])})
+  mc$content=trimws(gsub("\\|", "", mc$content))
+  mc$content=trimws(gsub("\\!", "", mc$content))
+  mc=mc[-which(mc$content=="-", mc$content),]
+  if(nrow(mc)!=0){
+    if(sum(mc$type=="Table_heading")>0){
+      ncolx=sum(mc$type=="Table_heading")
+      headers=mc$content[mc$type=="Table_heading"]
+    }else{
+      if(mc$part[1]=="Site_characteristics"){ncolx=2}
+      headers=c("type","value")
+    }
+    nt=matrix(mc$content[mc$type!="Table_heading"], ncol=ncolx,byrow=T)  
+    nt=data.frame(site=rep(mc$site[1],nrow(nt)),part=rep(mc$part[1],nrow(nt)),tabx=rep(mc$tabx[1],nrow(nt)),nt)
+    colnames(nt)=c("site","part","tabx",headers)
+  }else{
+    nt=NA
+  }    
+  return(nt)
+}
+
+#*********************************************************************************************************************************
+scrape_apesatlas <- function(path_to_save,api_url) {
+  #*********************************************************************************************************************************
+  # COLLECT PAGES
+  #*********************************************************************************************************************************
+  page_all=get_all_page_titles(api_url)
+
+  #*********************************************************************************************************************************
+  # COLLECT ALL PAGES CONTENT FOR ALL PAGES
+  #*********************************************************************************************************************************
+  page_content = lapply(page_all, function(i){get_mediawiki_page(api_url, page_title=i)})
+
+  #*********************************************************************************************************************************
+  # SELECT ONLY CONTENT PAGES
+  #*********************************************************************************************************************************
+  xpage=1:length(page_all)
+  xlog_page_type=lapply(1:length(xpage),function(i){
+    content=strsplit(page_content[[i]],split="\n")[[1]]
+    xlog=c()
+    if(sum(grepl("]] > [[",content[1],fixed=T))>0){xlog="site content page"}
+    if(length(xlog)==0){xlog="other"}
+    return(xlog)
+  })
+  type_table=data.frame(page_all,unlist(xlog_page_type))
+
+  page_sel=page_all[which(type_table[,2]=="site content page")]
+  page_sel=page_sel[!page_sel%in%c("Test","Test1","Testseite")]
+
+  #*********************************************************************************************************************************
+  # COLLECT ALL PAGES CONTENT FOR ALL PAGES
+  #*********************************************************************************************************************************
+  sel = which(page_all%in%page_sel)
+  page_content = page_content[sel]
+
+  #*********************************************************************************************************************************
+  # EXTRACT PAGE SECTIONS
+  #*********************************************************************************************************************************
+  xpage=1:length(page_sel)
+
+  xlog=list()
+  tf_all=lapply(1:length(xpage),function(i){
+    print(i)
+    print(page_sel[i])
+    xlog=c(i,page_sel[i])
+    content=strsplit(page_content[[i]],split="\n")[[1]]
+    if (length(content)!=0){
+      xdivst=which(grepl("<div",content))
+      xdiven=which(grepl("</div",content))
+      if(length(xdivst)>0){
+        yy=lapply(1:length(xdivst),function(y){
+          mm=xdivst[y]:xdiven[y]
+          mx=paste(content[mm],collapse="")
+          content[mm[1]]<<-mx
+          return(mm)
+        })
+        yy=unlist(lapply(1:length(xdivst),function(y){
+          mm=c(xdivst[y]:xdiven[y])[-1]
+        }))
+        if(length(yy)!=0){content=content[-c(yy)]}
+      }
+
+      tf=data.frame(idx=1:length(content),site=page_sel[i],i=i,content)
+      tf$part=rep("",nrow(tf))
+      if(sum(grepl("]] >",content))>0){tf$part[1:(which(grepl("]] >",content))-1)]="Intro"}
+      tf$part[which(grepl("]] >",content))]="breadcrumb"
+      if(sum(grepl("= Summary =",content))>0){tf$part[which(grepl("= Summary =",content)):length(content)]="Summary"}
+      if(sum(grepl("= Site characteristics =",content))>0){tf$part[which(grepl("= Site characteristics =",content)):length(content)]="Site_characteristics"}
+      if(sum(grepl("= Ape status =",content))>0){tf$part[which(grepl("= Ape status =",content)):length(content)]="Ape_status"}
+      if(sum(grepl("= Threats =",content))>0){tf$part[which(grepl("= Threats =",content)):length(content)]="Threats"}
+      if(sum(grepl("= Conservation activities =",content))>0){tf$part[which(grepl("= Conservation activities =",content)):length(content)]="Conservation_activities"}
+      if(sum(grepl("= Challenges =",content))>0){tf$part[which(grepl("= Challenges =",content)):length(content)]="Challenges"}
+      if(sum(grepl("= Enablers =",content))>0){tf$part[which(grepl("= Enablers =",content)):length(content)]="Enablers"}
+      if(sum(grepl("= Research activities =",content))>0){tf$part[which(grepl("= Research activities =",content)):length(content)]="Research_activities"}
+      if(sum(grepl("= Documented behaviours =",content))>0){tf$part[which(grepl("= Documented behaviours =",content)):length(content)]="Documented_behaviours"}
+      if(sum(grepl("= External links =",content))>0){tf$part[which(grepl("= External links =",content)):length(content)]="External_links"}
+      if(sum(grepl("= Exposure to climate change impacts =",content))>0){tf$part[which(grepl("= Exposure to climate change impacts =",content)):length(content)]="Exposure_to_climate_change_impacts"}
+      if(sum(grepl("= References =",content))>0){tf$part[which(grepl("= References =",content)):length(content)]="References"}
+      if(sum(grepl("Page completed by",content))>0){tf$part[which(grepl("Page completed by:",content)):length(content)]="footer"}
+      
+      tf$type=rep("",nrow(tf))
+      tf$type[tf$part=="Intro"]="Intro"
+      tf$type[tf$part=="breadcrumb"]="breadcrumb"
+      tf$type[which(unlist(lapply(1:length(content),function(x){grepl("= ",substr(content[x],1,2),fixed = T)})))]="Section_headline"
+      tf$type[which(grepl("display_map",content,fixed = T))]="Summary_map"
+      tf$type[which(grepl("Cite as: ",content,fixed = T))]="Citation"
+      tf$type[which(grepl("translate.goog",content,fixed = T))]="Translate"
+      tf$type[which(grepl("* ",content,fixed = T))]="Summary_content"
+      tf$type[which(grepl("'''Table",content,fixed = T))]="Table_caption"
+      tf$type[which(grepl("{|",content,fixed = T))]="Table_base_info"
+      tf$type[which(unlist(lapply(1:length(content),function(x){grepl("|",substr(content[x],1,1),fixed = T)})))]="Table_content"
+      tf$type[which(unlist(lapply(1:length(content),function(x){grepl("!",substr(content[x],1,1),fixed = T)})))]="Table_heading"
+      tf$type[which(unlist(lapply(1:length(content),function(x){grepl("|'''",substr(content[x],1,4),fixed = T)})))]="Table_heading"
+      xn=which(tf$type=="Table_base_info")+1; xn=xn[-1]
+      tf$type[xn]="Table_heading"
+      tf$type[which(grepl("|}",content,fixed = T))]="Table_end"
+      tf$type[!grepl("[A-Za-z]",content) & tf$type==""]="empty"
+      tf$type[which(grepl("https://www.iucnredlist.org",content))]="Table_source"
+      tf$type[which(grepl("Conservation activities list",content))]="Table_source"
+      tf$type[which(grepl("thumb",content,fixed = T))]="Image"
+      tf$type[tf$type==""]="Text"
+      tf$type[tf$part=="footer"]="footer"
+
+      tf$type2=tf$type
+      tf$type2[which(grepl("Table",tf$type))]="Table"
+      
+      xtcs=which(tf$type=="Table_caption")
+      xtce=which(tf$type=="Table_end")
+      xtcn=1:length(xtcs)
+      tf$tabx=rep(0,nrow(tf))
+      if(length(xtcs)>0){
+        yy=lapply(1:length(xtcs),function(y){
+          mm=xtcs[y]:xtce[y]
+          tf$tabx[mm]<<-xtcn[y]
+        })
+      }
+      
+      tf$content[tf$part=="Challenges"]=gsub("Impediment","Challenge",tf$content[tf$part=="Challenges"]) 
+      tf$content[tf$part=="Challenges"]=gsub("Challenges","Challenge",tf$content[tf$part=="Challenges"])
+      
+      if(length(unique(tf$tabx[tf$part=="Exposure_to_climate_change_impacts"]))>2){
+        un=unique(tf$tabx[tf$part=="Exposure_to_climate_change_impacts"])[-1]
+        tf$part[tf$part=="Exposure_to_climate_change_impacts" & tf$tabx==un[2]]="Exposure_to_climate_change_impacts_2"
+      }  
+    xlog=c(xlog,sum(tf$type==""))
+    }else{
+      xlog=0
+      tf=""
+    }
+    xlog[[i]]<<-paste(xlog,collapse=";")
+    return(tf)
+  })
+
+  #*********************************************************************************************************************************
+  # TABLES
+  #*********************************************************************************************************************************
+
+  #------------------------------------------------------------------------------------------------------------------
+  # "Site_characteristics"
+  #------------------------------------------------------------------------------------------------------------------
+  tabxn="Site_characteristics"
+  tabs=lapply(tf_all, FUN=conv_wiki_to_df,tabxn)
+  sitec=do.call(rbind,tabs)
+  sitec=subset(sitec,!is.na(part))
+  sitec$type=gsub(":","",sitec$type, fixed=T)
+
+  #------------------------------------------------------------------------------------------------------------------
+  # "Ape_status"
+  #------------------------------------------------------------------------------------------------------------------
+  tabxn="Ape_status"
+  tabs=lapply(tf_all, FUN=conv_wiki_to_df,tabxn)
+  apest=do.call(rbind.fill,tabs)
+  apest=subset(apest,!is.na(part))
+
+  #------------------------------------------------------------------------------------------------------------------
+  # "Threats"
+  #------------------------------------------------------------------------------------------------------------------
+  tabxn="Threats"
+  tabs=lapply(tf_all, FUN=conv_wiki_to_df,tabxn)
+  treat=do.call(rbind,tabs)
+  treat=subset(treat,!is.na(part))
+
+  #------------------------------------------------------------------------------------------------------------------
+  # "Conservation_activities"
+  #------------------------------------------------------------------------------------------------------------------
+  tabxn="Conservation_activities"
+  tabs=lapply(tf_all, FUN=conv_wiki_to_df,tabxn)
+  conac=do.call(rbind,tabs)
+  conac=subset(conac,!is.na(part))
+
+  #------------------------------------------------------------------------------------------------------------------
+  # "Challenges"
+  #------------------------------------------------------------------------------------------------------------------
+  tabxn="Challenges"
+  tabs=lapply(tf_all, FUN=conv_wiki_to_df,tabxn)
+  chall=do.call(rbind,tabs)
+  chall=subset(chall,!is.na(part))
+
+  #------------------------------------------------------------------------------------------------------------------
+  # "Enablers"
+  #------------------------------------------------------------------------------------------------------------------
+  tabxn="Enablers"
+  tabs=lapply(tf_all, FUN=conv_wiki_to_df,tabxn)
+  enabs=do.call(rbind,tabs)
+  enabs=subset(enabs,!is.na(part))
+
+  #------------------------------------------------------------------------------------------------------------------
+  # "Documented_behaviours"
+  #------------------------------------------------------------------------------------------------------------------
+  tabxn="Documented_behaviours"
+  tabs=lapply(tf_all, FUN=conv_wiki_to_df,tabxn)
+  behav=do.call(rbind,tabs)
+  behav=subset(behav,!is.na(part))
+
+  #------------------------------------------------------------------------------------------------------------------
+  # "Exposure_to_climate_change_impacts"
+  #------------------------------------------------------------------------------------------------------------------
+  tabxn="Exposure_to_climate_change_impacts"
+  tabs=lapply(tf_all, FUN=conv_wiki_to_df,tabxn)
+  clima=do.call(rbind,tabs)
+  clima=subset(clima,!is.na(part))
+  colnames(clima)=c("site","part","tabx","'''Value'''","'''1981-2010'''","'''2021-2050, RCP 2.6'''","'''2021-2050, RCP 6.0'''","'''2071-2099, RCP 2.6'''","'''2071-2099, RCP 6.0'''")
+
+  # "Exposure_to_climate_change_impacts_2"
+  tabxn="Exposure_to_climate_change_impacts_2"
+  tabs=lapply(tf_all, FUN=conv_wiki_to_df,tabxn)
+  clima2=do.call(rbind,tabs)
+  clima2=subset(clima2,!is.na(part))
+  colnames(clima2)=c("site","part","tabx","'''Type'''","'''No. of years with event (2021-2050, RCP 2.6)'''","'''% of site exposed (2021-2050, RCP 2.6)'''","'''No. of years with event (2021-2050, RCP 6.0)'''","'''% of site exposed (2021-2050, RCP 6.0)'''","'''No. of years with event (2070-2099, RCP 2.6)'''","'''% of site exposed (2070-2099, RCP 2.6)'''","'''No. of years with event (2070-2099, RCP 6.0)'''","'''% of site exposed (2070-2099, RCP 6.0)'''")
+
+  #*********************************************************************************************************************************
+  # WRITE ALL TO ONE FILE
+  #*********************************************************************************************************************************
+
+  page_sel=as.data.frame(matrix(unlist(lapply(strsplit(unlist(xlog),split=";"),function(x){x[1:3]})),ncol=3,byrow=T))
+  colnames(page_sel)=c("idx","site","gibbonsite")
+
+  write_xlsx(list(Site_characteristics=sitec,Ape_status=apest,Threats=treat,Conservation_activities=conac,Challenges=chall,Enablers=enabs,Behaviours=behav,Exposure_to_climate_1=clima,Exposure_to_climate_2=clima2),path = paste(path_to_save,"_wiki_content.xlsx",sep="/"), format_headers = F)
+
+  #*********************************************************************************************************************************
+  save.image(paste(path_to_save,"_wiki_content.Rdata",sep="/"))
+  #*********************************************************************************************************************************
+}
+
