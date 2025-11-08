@@ -317,5 +317,5 @@ scrape_apesatlas <- function(path_to_save,api_url) {
   #*********************************************************************************************************************************
   save(sitec,apest,treat,conac,chall,enabs,behav,clima,clima2,file = paste(path_to_save,"_wiki_content.Rdata",sep="/"))
   #*********************************************************************************************************************************
-  print(paste("Results for ",length(sel)," Pages were saved to your specified directory."))
+  print(paste("Results for ",length(sel)," pages have been saved in the directory you specified."))
 }
