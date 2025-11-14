@@ -353,5 +353,5 @@ scrape_apesatlas <- function(path_to_save) {
   #*********************************************************************************************************************************
   save(sitec,apest,treat,conac,chall,enabs,behav,clima,clima2,file = paste(path_to_save,"apesatlas_tables.Rdata",sep="/"))
   #*********************************************************************************************************************************
-  cat(paste0("\n\nResults for ",length(sel)," pages have been saved in the directory you specified.\nYou will also find the tables (Site_characteristics, Ape_status, Threats, Conservation_activities, Challenges, Enablers, Behaviours, Exposure_to_climate_1, Exposure_to_climate_2) in the workspace.\n\n"))
+  cat(paste0("\n\nResults for ",length(sel)," pages have been saved in the directory you specified.\nYou can also find the tables mentioned above in the workspace.\n\n"))
 }
