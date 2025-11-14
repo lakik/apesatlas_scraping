@@ -108,7 +108,12 @@ scrape_apesatlas <- function(path_to_save) {
   #*********************************************************************************************************************************
   # COLLECT ALL PAGES CONTENT FOR ALL PAGES
   #*********************************************************************************************************************************
-  page_content = lapply(page_all, function(i){get_mediawiki_page(api_url, page_title=i)})
+  cat(paste0("\nThe script is collecting the pages from the APES atlas.\n"))
+  pb <- txtProgressBar(min = 0, max = length(page_all), style = 3)
+  page_content = lapply(page_all, function(i){
+    setTxtProgressBar(pb, i)
+    get_mediawiki_page(api_url, page_title=i)
+  })
 
   #*********************************************************************************************************************************
   # SELECT ONLY CONTENT PAGES
@@ -137,6 +142,7 @@ scrape_apesatlas <- function(path_to_save) {
   #*********************************************************************************************************************************
   xpage=1:length(page_sel)
 
+  cat(paste0("\nThe script is extracting the tables from the collected APES atlas pages.\n"))
   pb <- txtProgressBar(min = 0, max = length(xpage), style = 3)
   xlog=list()
   tf_all=lapply(1:length(xpage),function(i){
@@ -233,6 +239,7 @@ scrape_apesatlas <- function(path_to_save) {
   #*********************************************************************************************************************************
   # TABLES
   #*********************************************************************************************************************************
+  cat(paste0("\nThe script is creating the tables per section.\n"))
   # "breadcrumb"
   bc=lapply(tf_all,function(x){
     subset(x,part=="breadcrumb")
@@ -247,6 +254,7 @@ scrape_apesatlas <- function(path_to_save) {
   #------------------------------------------------------------------------------------------------------------------
   # "Site_characteristics"
   #------------------------------------------------------------------------------------------------------------------
+  cat(paste0("\n The Site characteristics table.\n"))
   tabxn="Site_characteristics"
   tabs=lapply(tf_all, FUN=conv_wiki_to_df,tabxn,bc=bread)
   sitec=do.call(rbind,tabs)
@@ -256,6 +264,7 @@ scrape_apesatlas <- function(path_to_save) {
   #------------------------------------------------------------------------------------------------------------------
   # "Ape_status"
   #------------------------------------------------------------------------------------------------------------------
+  cat(paste0("\n The Ape status table.\n"))
   tabxn="Ape_status"
   tabs=lapply(tf_all, FUN=conv_wiki_to_df,tabxn,bc=bread)
   apest=do.call(rbind.fill,tabs)
@@ -264,6 +273,7 @@ scrape_apesatlas <- function(path_to_save) {
   #------------------------------------------------------------------------------------------------------------------
   # "Threats"
   #------------------------------------------------------------------------------------------------------------------
+  cat(paste0("\n The Threats table.\n"))
   tabxn="Threats"
   tabs=lapply(tf_all, FUN=conv_wiki_to_df,tabxn,bc=bread)
   treat=do.call(rbind,tabs)
@@ -272,6 +282,7 @@ scrape_apesatlas <- function(path_to_save) {
   #------------------------------------------------------------------------------------------------------------------
   # "Conservation_activities"
   #------------------------------------------------------------------------------------------------------------------
+  cat(paste0("\n The Conservation_activitiess table.\n"))
   tabxn="Conservation_activities"
   tabs=lapply(tf_all, FUN=conv_wiki_to_df,tabxn,bc=bread)
   conac=do.call(rbind,tabs)
@@ -280,6 +291,7 @@ scrape_apesatlas <- function(path_to_save) {
   #------------------------------------------------------------------------------------------------------------------
   # "Challenges"
   #------------------------------------------------------------------------------------------------------------------
+  cat(paste0("\n The Challenges table.\n"))
   tabxn="Challenges"
   tabs=lapply(tf_all, FUN=conv_wiki_to_df,tabxn,bc=bread)
   chall=do.call(rbind,tabs)
@@ -288,6 +300,7 @@ scrape_apesatlas <- function(path_to_save) {
   #------------------------------------------------------------------------------------------------------------------
   # "Enablers"
   #------------------------------------------------------------------------------------------------------------------
+  cat(paste0("\n The Enablers table.\n"))
   tabxn="Enablers"
   tabs=lapply(tf_all, FUN=conv_wiki_to_df,tabxn,bc=bread)
   enabs=do.call(rbind,tabs)
@@ -296,6 +309,7 @@ scrape_apesatlas <- function(path_to_save) {
   #------------------------------------------------------------------------------------------------------------------
   # "Documented_behaviours"
   #------------------------------------------------------------------------------------------------------------------
+  cat(paste0("\n The Documented behaviours table.\n"))
   tabxn="Documented_behaviours"
   tabs=lapply(tf_all, FUN=conv_wiki_to_df,tabxn,bc=bread)
   behav=do.call(rbind,tabs)
@@ -304,6 +318,7 @@ scrape_apesatlas <- function(path_to_save) {
   #------------------------------------------------------------------------------------------------------------------
   # "Exposure_to_climate_change_impacts"
   #------------------------------------------------------------------------------------------------------------------
+  cat(paste0("\n The Exposure to climate change impacts table.\n"))
   tabxn="Exposure_to_climate_change_impacts"
   tabs=lapply(tf_all, FUN=conv_wiki_to_df,tabxn,bc=bread)
   clima=do.call(rbind,tabs)
