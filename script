@@ -1,5 +1,4 @@
 
-
 #*********************************************************************************************************************************
 # LOAD FUCTIONS
 #*********************************************************************************************************************************
@@ -239,7 +238,7 @@ scrape_apesatlas <- function(path_to_save) {
   #*********************************************************************************************************************************
   # TABLES
   #*********************************************************************************************************************************
-  cat(paste0("\nThe script is creating the tables per section."))
+  cat(paste0("\nThe script is collecting per site the country and its name.\n"))
   # "breadcrumb"
   bc=lapply(tf_all,function(x){
     subset(x,part=="breadcrumb")
@@ -254,6 +253,7 @@ scrape_apesatlas <- function(path_to_save) {
   #------------------------------------------------------------------------------------------------------------------
   # "Site_characteristics"
   #------------------------------------------------------------------------------------------------------------------
+  cat(paste0("\nThe script is creating the tables per section."))
   cat(paste0("\n The Site_characteristics table."))
   tabxn="Site_characteristics"
   tabs=lapply(tf_all, FUN=fcs_conv_wiki_to_df,tabxn,bc=bread)
