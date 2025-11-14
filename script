@@ -1,4 +1,5 @@
 
+
 #*********************************************************************************************************************************
 # LOAD FUCTIONS
 #*********************************************************************************************************************************
@@ -20,6 +21,7 @@ get_all_page_titles <- function(api_url) {
       )
     # Perform the request
     response <- req %>%
+      req_timeout(seconds = 60) %>%
       req_perform() %>%
       resp_body_json()
     # Extract page titles from the response
@@ -94,7 +96,6 @@ conv_wiki_to_df <- function(xt,tabxn,bc) {
 
 #*********************************************************************************************************************************
 scrape_apesatlas <- function(path_to_save) {
-
   #*********************************************************************************************************************************
   # Define the base MediaWiki API URL
   #*********************************************************************************************************************************
@@ -136,8 +137,10 @@ scrape_apesatlas <- function(path_to_save) {
   #*********************************************************************************************************************************
   xpage=1:length(page_sel)
 
+  pb <- txtProgressBar(min = 0, max = length(xpage), style = 3)
   xlog=list()
   tf_all=lapply(1:length(xpage),function(i){
+    setTxtProgressBar(pb, i)
     xlog=c(i,page_sel[i])
     content=strsplit(page_content[[i]],split="\n")[[1]]
     if (length(content)!=0){
@@ -322,9 +325,19 @@ scrape_apesatlas <- function(path_to_save) {
   colnames(page_sel)=c("idx","site","gibbonsite")
 
   write_xlsx(list(Site_characteristics=sitec,Ape_status=apest,Threats=treat,Conservation_activities=conac,Challenges=chall,Enablers=enabs,Behaviours=behav,Exposure_to_climate_1=clima,Exposure_to_climate_2=clima2),path = paste(path_to_save,"apesatlas_tables.xlsx",sep="/"), format_headers = F)
-
+  
+  Site_characteristics <<- sitec
+  Ape_status <<- apest
+  Threats <<- treat
+  Conservation_activities <<- conac
+  Challenges <<- chall
+  Enablers <<- enabs
+  Behaviours <<- behav
+  Exposure_to_climate_1 <<- clima
+  Exposure_to_climate_2 <<- clima2
+  
   #*********************************************************************************************************************************
   save(sitec,apest,treat,conac,chall,enabs,behav,clima,clima2,file = paste(path_to_save,"apesatlas_tables.Rdata",sep="/"))
   #*********************************************************************************************************************************
-  print(paste("Results for ",length(sel)," pages have been saved in the directory you specified.",sep=""))
+  cat(paste0("\n\nResults for ",length(sel)," pages have been saved in the directory you specified.\n"))
 }
