@@ -239,7 +239,7 @@ scrape_apesatlas <- function(path_to_save) {
   #*********************************************************************************************************************************
   # TABLES
   #*********************************************************************************************************************************
-  cat(paste0("\nThe script is creating the tables per section.\n"))
+  cat(paste0("\nThe script is creating the tables per section."))
   # "breadcrumb"
   bc=lapply(tf_all,function(x){
     subset(x,part=="breadcrumb")
