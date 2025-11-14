@@ -4,7 +4,7 @@
 # LOAD FUCTIONS
 #*********************************************************************************************************************************
 # Function to get all page titles
-get_all_page_titles <- function(api_url) {
+fcs_get_all_page_titles <- function(api_url) {
   # Create an empty list to store titles
   all_titles <- c()
   # Set initial 'apcontinue' as NULL to start from the first page
@@ -40,7 +40,7 @@ get_all_page_titles <- function(api_url) {
 }
 #*********************************************************************************************************************************
 # Funktion zum Abrufen des MediaWiki-Seitenquellcodes
-get_mediawiki_page <- function(api_url, page_title) {
+fcs_get_mediawiki_page <- function(api_url, page_title) {
   # Erstelle die API-Anfrage
   request <- request(api_url) %>%
     req_url_query(
@@ -68,7 +68,7 @@ get_mediawiki_page <- function(api_url, page_title) {
   return(content)
 }
 #*********************************************************************************************************************************
-conv_wiki_to_df <- function(xt,tabxn,bc) {
+fcs_conv_wiki_to_df <- function(xt,tabxn,bc) {
   mc=subset(xt, xt$part==tabxn & (xt$type=="Table_content" | xt$type=="Table_heading"))
   xx=strsplit(mc$content,split="<!")
   mc$content=sapply(xx,function(x){trimws(x[1])})
@@ -103,7 +103,7 @@ scrape_apesatlas <- function(path_to_save) {
   #*********************************************************************************************************************************
   # COLLECT PAGES
   #*********************************************************************************************************************************
-  page_all=get_all_page_titles(api_url)
+  page_all=fcs_get_all_page_titles(api_url)
 
   #*********************************************************************************************************************************
   # COLLECT ALL PAGES CONTENT FOR ALL PAGES
@@ -112,7 +112,7 @@ scrape_apesatlas <- function(path_to_save) {
   pb <- txtProgressBar(min = 0, max = length(page_all), style = 3)
   page_content = lapply(1:length(page_all), function(i){
     setTxtProgressBar(pb, i)
-    get_mediawiki_page(api_url, page_title=page_all[i])
+    fcs_get_mediawiki_page(api_url, page_title=page_all[i])
   })
 
   #*********************************************************************************************************************************
@@ -256,7 +256,7 @@ scrape_apesatlas <- function(path_to_save) {
   #------------------------------------------------------------------------------------------------------------------
   cat(paste0("\n The Site characteristics table."))
   tabxn="Site_characteristics"
-  tabs=lapply(tf_all, FUN=conv_wiki_to_df,tabxn,bc=bread)
+  tabs=lapply(tf_all, FUN=fcs_conv_wiki_to_df,tabxn,bc=bread)
   sitec=do.call(rbind,tabs)
   sitec$type=gsub(":","",sitec$type, fixed=T)
   sitec=subset(sitec,!is.na(site))
@@ -266,7 +266,7 @@ scrape_apesatlas <- function(path_to_save) {
   #------------------------------------------------------------------------------------------------------------------
   cat(paste0("\n The Ape status table."))
   tabxn="Ape_status"
-  tabs=lapply(tf_all, FUN=conv_wiki_to_df,tabxn,bc=bread)
+  tabs=lapply(tf_all, FUN=fcs_conv_wiki_to_df,tabxn,bc=bread)
   apest=do.call(rbind.fill,tabs)
   apest=subset(apest,!is.na(site))
 
@@ -275,7 +275,7 @@ scrape_apesatlas <- function(path_to_save) {
   #------------------------------------------------------------------------------------------------------------------
   cat(paste0("\n The Threats table."))
   tabxn="Threats"
-  tabs=lapply(tf_all, FUN=conv_wiki_to_df,tabxn,bc=bread)
+  tabs=lapply(tf_all, FUN=fcs_conv_wiki_to_df,tabxn,bc=bread)
   treat=do.call(rbind,tabs)
   treat=subset(treat,!is.na(site))
 
@@ -284,7 +284,7 @@ scrape_apesatlas <- function(path_to_save) {
   #------------------------------------------------------------------------------------------------------------------
   cat(paste0("\n The Conservation_activitiess table."))
   tabxn="Conservation_activities"
-  tabs=lapply(tf_all, FUN=conv_wiki_to_df,tabxn,bc=bread)
+  tabs=lapply(tf_all, FUN=fcs_conv_wiki_to_df,tabxn,bc=bread)
   conac=do.call(rbind,tabs)
   conac=subset(conac,!is.na(site))
 
@@ -293,7 +293,7 @@ scrape_apesatlas <- function(path_to_save) {
   #------------------------------------------------------------------------------------------------------------------
   cat(paste0("\n The Challenges table."))
   tabxn="Challenges"
-  tabs=lapply(tf_all, FUN=conv_wiki_to_df,tabxn,bc=bread)
+  tabs=lapply(tf_all, FUN=fcs_conv_wiki_to_df,tabxn,bc=bread)
   chall=do.call(rbind,tabs)
   chall=subset(chall,!is.na(site))
 
@@ -302,7 +302,7 @@ scrape_apesatlas <- function(path_to_save) {
   #------------------------------------------------------------------------------------------------------------------
   cat(paste0("\n The Enablers table."))
   tabxn="Enablers"
-  tabs=lapply(tf_all, FUN=conv_wiki_to_df,tabxn,bc=bread)
+  tabs=lapply(tf_all, FUN=fcs_conv_wiki_to_df,tabxn,bc=bread)
   enabs=do.call(rbind,tabs)
   enabs=subset(enabs,!is.na(site))
 
@@ -311,7 +311,7 @@ scrape_apesatlas <- function(path_to_save) {
   #------------------------------------------------------------------------------------------------------------------
   cat(paste0("\n The Documented behaviours table."))
   tabxn="Documented_behaviours"
-  tabs=lapply(tf_all, FUN=conv_wiki_to_df,tabxn,bc=bread)
+  tabs=lapply(tf_all, FUN=fcs_conv_wiki_to_df,tabxn,bc=bread)
   behav=do.call(rbind,tabs)
   behav=subset(behav,!is.na(site))
 
@@ -320,14 +320,14 @@ scrape_apesatlas <- function(path_to_save) {
   #------------------------------------------------------------------------------------------------------------------
   cat(paste0("\n The Exposure to climate change impacts table."))
   tabxn="Exposure_to_climate_change_impacts"
-  tabs=lapply(tf_all, FUN=conv_wiki_to_df,tabxn,bc=bread)
+  tabs=lapply(tf_all, FUN=fcs_conv_wiki_to_df,tabxn,bc=bread)
   clima=do.call(rbind,tabs)
   colnames(clima)=c("site","country","region","Value","1981-2010","2021-2050, RCP 2.6","2021-2050, RCP 6.0","2071-2099, RCP 2.6","2071-2099, RCP 6.0")
   clima=subset(clima,!is.na(site))
 
   # "Exposure_to_climate_change_impacts_2"
   tabxn="Exposure_to_climate_change_impacts_2"
-  tabs=lapply(tf_all, FUN=conv_wiki_to_df,tabxn,bc=bread)
+  tabs=lapply(tf_all, FUN=fcs_conv_wiki_to_df,tabxn,bc=bread)
   clima2=do.call(rbind,tabs)
   colnames(clima2)=c("site","country","region","Type","No. of years with event (2021-2050, RCP 2.6)","% of site exposed (2021-2050, RCP 2.6)","No. of years with event (2021-2050, RCP 6.0)","% of site exposed (2021-2050, RCP 6.0)","No. of years with event (2070-2099, RCP 2.6)","% of site exposed (2070-2099, RCP 2.6)","No. of years with event (2070-2099, RCP 6.0)","% of site exposed (2070-2099, RCP 6.0)")
   clima2=subset(clima2,!is.na(site))
