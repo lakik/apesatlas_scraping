@@ -108,12 +108,11 @@ scrape_apesatlas <- function(path_to_save) {
   #*********************************************************************************************************************************
   # COLLECT ALL PAGES CONTENT FOR ALL PAGES
   #*********************************************************************************************************************************
-browser()
   cat(paste0("\nThe script is collecting the pages from the APES atlas.\n"))
   pb <- txtProgressBar(min = 0, max = length(page_all), style = 3)
-  page_content = lapply(page_all, function(i){
+  page_content = lapply(1:length(page_all), function(i){
     setTxtProgressBar(pb, i)
-    get_mediawiki_page(api_url, page_title=i)
+    get_mediawiki_page(api_url, page_title=page_all[i])
   })
 
   #*********************************************************************************************************************************
