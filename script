@@ -92,10 +92,6 @@ fcs_conv_wiki_to_df <- function(xt,tabxn,bc) {
   return(nt)
 }
 
-fix_path <- function(path_to_save) {
-  path_to_save <- gsub("\\\\", "/", path_to_save)
-}
-
 #*********************************************************************************************************************************
 scrape_apesatlas <- function(path_to_save) {
   #*********************************************************************************************************************************
@@ -338,8 +334,6 @@ scrape_apesatlas <- function(path_to_save) {
   #*********************************************************************************************************************************
   # WRITE ALL TO ONE FILE
   #*********************************************************************************************************************************
-  if (grepl("\\\\", path_to_save)) { path_to_save = fix_path(raw_path)}
-
   page_sel=as.data.frame(matrix(unlist(lapply(strsplit(unlist(xlog),split=";"),function(x){x[1:3]})),ncol=3,byrow=T))
   colnames(page_sel)=c("idx","site","gibbonsite")
 
