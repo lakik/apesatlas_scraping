@@ -239,6 +239,7 @@ scrape_apesatlas <- function(path_to_save) {
     return(tf)
   })
   close(pb)
+  cat(paste0("\nThe script is preparing the tables for saving.\n"))
 
   #*********************************************************************************************************************************
   # TABLES (ORIGINAL - unverändert)
