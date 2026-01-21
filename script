@@ -108,7 +108,7 @@ scrape_apesatlas <- function(path_to_save) {
   #*********************************************************************************************************************************
   # COLLECT PAGES
   #*********************************************************************************************************************************
-  cat(paste0("\nCollecting all page titles from APES atlas...\n"))
+  cat(paste0("\nCollecting all page titles from APES Atlas.\n"))
   page_all=fcs_get_all_page_titles(api_url)
 
   #*********************************************************************************************************************************
@@ -145,7 +145,7 @@ scrape_apesatlas <- function(path_to_save) {
   #*********************************************************************************************************************************
   xpage=1:length(page_sel)
 
-  cat(paste0("\nThe script is extracting the tables from the collected APES atlas pages.\n"))
+  cat(paste0("\nExtracting the tables from the collected APES atlas pages.\n"))
   pb <- txtProgressBar(min = 0, max = length(xpage), style = 3)
   xlog=list()
   tf_all=lapply(1:length(xpage),function(i){
@@ -239,10 +239,10 @@ scrape_apesatlas <- function(path_to_save) {
     return(tf)
   })
   close(pb)
-  cat(paste0("\nThe script is preparing the tables for saving.\n"))
+  cat(paste0("\nThe script is creating the tables per section."))
 
   #*********************************************************************************************************************************
-  # TABLES (ORIGINAL - unverändert)
+  # TABLES 
   #*********************************************************************************************************************************
   bc=lapply(tf_all,function(x){
     subset(x,part=="breadcrumb")
@@ -257,7 +257,6 @@ scrape_apesatlas <- function(path_to_save) {
   #------------------------------------------------------------------------------------------------------------------
   # "Site_characteristics"
   #------------------------------------------------------------------------------------------------------------------
-  cat(paste0("\nThe script is creating the tables per section."))
   cat(paste0("\n The Site_characteristics table."))
   tabxn="Site_characteristics"
   tabs=lapply(tf_all, FUN=fcs_conv_wiki_to_df,tabxn,bc=bread)
