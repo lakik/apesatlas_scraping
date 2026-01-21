@@ -1,71 +1,77 @@
 #*********************************************************************************************************************************
-# LOAD FUCTIONS
+# LOAD FUNCTIONS
 #*********************************************************************************************************************************
-# Function to get all page titles
+# Function to get all page titles (ORIGINAL - unverändert)
 fcs_get_all_page_titles <- function(api_url) {
-  # Create an empty list to store titles
   all_titles <- c()
-  # Set initial 'apcontinue' as NULL to start from the first page
   apcontinue <- NULL
   repeat {
-    # Create a request to the MediaWiki API
     req <- request(api_url) %>%
       req_body_form(
         action = "query",
         list = "allpages",
         format = "json",
-        aplimit = "max",  # Request the maximum number of results per query
-        apcontinue = apcontinue  # Handle pagination
+        aplimit = "max",
+        apcontinue = apcontinue
       )
-    # Perform the request
     response <- req %>%
       req_timeout(seconds = 60) %>%
       req_perform() %>%
       resp_body_json()
-    # Extract page titles from the response
     pages <- response$query$allpages
     titles <- sapply(pages, function(page) page$title)
-    # Append the titles to the list
     all_titles <- c(all_titles, titles)
-    # Check if there's more data to fetch
     if (!is.null(response$continue$apcontinue)) {
       apcontinue <- response$continue$apcontinue
     } else {
-      break  # Exit the loop if no more pages are available
+      break
     }
   }
   return(all_titles)
 }
+
 #*********************************************************************************************************************************
-# Funktion zum Abrufen des MediaWiki-Seitenquellcodes
-fcs_get_mediawiki_page <- function(api_url, page_title) {
-  # Erstelle die API-Anfrage
-  request <- request(api_url) %>%
-    req_url_query(
-      action = "query",
-      prop = "revisions",
-      titles = page_title,
-      rvprop = "content",
-      format = "json"
-    )
-  
-  # Führe die Anfrage aus und speichere die Antwort
-  response <- request %>%
-    req_perform() %>%
-    resp_body_json()
-  
-  # Extrahiere den Quelltext aus der Antwort
-  pages <- response$query$pages
-  page_id <- names(pages)[1]
-  
-  if (page_id == "-1") {
-    stop("Seite nicht gefunden.")
+# NEUE OPTIMIERTE Batch-Funktion zum Abrufen mehrerer Seiten gleichzeitig
+fcs_get_mediawiki_pages_batch <- function(api_url, page_titles, chunk_size = 50) {
+  chunks <- split(page_titles, ceiling(seq_along(page_titles) / chunk_size))
+  reqs <- lapply(chunks, function(chunk_titles) {
+    request(api_url) %>%
+      req_url_query(
+        action = "query",
+        prop = "revisions",
+        titles = paste(chunk_titles, collapse = "|"),
+        rvprop = "content",
+        format = "json"
+      ) %>%
+      req_throttle(rate = 10/1)
+  })
+  resps <- req_perform_parallel(reqs, on_error = "continue", progress = FALSE)
+  all_content <- list()
+  for (resp in resps) {
+    if (!inherits(resp, "error")) {
+      pages <- resp_body_json(resp)$query$pages
+
+      for (page_id in names(pages)) {
+        if (page_id != "-1" && !is.null(pages[[page_id]]$revisions)) {
+          page_title <- pages[[page_id]]$title
+          content <- pages[[page_id]]$revisions[[1]]$`*`
+          all_content[[page_title]] <- content
+        }
+      }
+    }
   }
-  
-  content <- pages[[page_id]]$revisions[[1]]$`*`
-  return(content)
+  page_content <- lapply(page_titles, function(title) {
+    if (!is.null(all_content[[title]])) {
+      return(all_content[[title]])
+    } else {
+      return("")
+    }
+  })
+  return(page_content)
 }
+
 #*********************************************************************************************************************************
+# ORIGINAL Conversion-Funktion (unverändert)
 fcs_conv_wiki_to_df <- function(xt,tabxn,bc) {
   mc=subset(xt, xt$part==tabxn & (xt$type=="Table_content" | xt$type=="Table_heading"))
   xx=strsplit(mc$content,split="<!")
@@ -97,24 +103,21 @@ scrape_apesatlas <- function(path_to_save) {
   #*********************************************************************************************************************************
   # Define the base MediaWiki API URL
   #*********************************************************************************************************************************
-  api_url <- "https://apesatlas.iucnapesportal.org/api.php"  # Replace with your MediaWiki instance URL
+  api_url <- "https://apesatlas.iucnapesportal.org/api.php"
+
   #*********************************************************************************************************************************
   # COLLECT PAGES
   #*********************************************************************************************************************************
+  cat(paste0("\nCollecting all page titles from APES atlas...\n"))
   page_all=fcs_get_all_page_titles(api_url)
 
   #*********************************************************************************************************************************
-  # COLLECT ALL PAGES CONTENT FOR ALL PAGES
+  # COLLECT ALL PAGES CONTENT - OPTIMIERT mit Batch + Parallel
   #*********************************************************************************************************************************
-  cat(paste0("\nThe script is collecting the pages from the APES atlas.\n"))
-  pb <- txtProgressBar(min = 0, max = length(page_all), style = 3)
-  page_content = lapply(1:length(page_all), function(i){
-    setTxtProgressBar(pb, i)
-    fcs_get_mediawiki_page(api_url, page_title=page_all[i])
-  })
+  page_content <- fcs_get_mediawiki_pages_batch(api_url, page_all, chunk_size = 50)
 
   #*********************************************************************************************************************************
-  # SELECT ONLY CONTENT PAGES
+  # SELECT ONLY CONTENT PAGES (ORIGINAL - unverändert)
   #*********************************************************************************************************************************
   xpage=1:length(page_all)
   xlog_page_type=lapply(1:length(xpage),function(i){
@@ -129,14 +132,16 @@ scrape_apesatlas <- function(path_to_save) {
   page_sel=page_all[which(type_table[,2]=="site content page")]
   page_sel=page_sel[!page_sel%in%c("Test","Test1","Testseite")]
 
+  cat(paste0("Found ", length(page_sel), " content pages.\n"))
+
   #*********************************************************************************************************************************
-  # COLLECT ALL PAGES CONTENT FOR ALL PAGES
+  # FILTER PAGE CONTENT
   #*********************************************************************************************************************************
   sel = which(page_all%in%page_sel)
   page_content = page_content[sel]
 
   #*********************************************************************************************************************************
-  # EXTRACT PAGE SECTIONS
+  # EXTRACT PAGE SECTIONS (ORIGINAL - unverändert)
   #*********************************************************************************************************************************
   xpage=1:length(page_sel)
 
@@ -180,7 +185,7 @@ scrape_apesatlas <- function(path_to_save) {
       if(sum(grepl("= Exposure to climate change impacts =",content))>0){tf$part[which(grepl("= Exposure to climate change impacts =",content)):length(content)]="Exposure_to_climate_change_impacts"}
       if(sum(grepl("= References =",content))>0){tf$part[which(grepl("= References =",content)):length(content)]="References"}
       if(sum(grepl("Page completed by",content))>0){tf$part[which(grepl("Page completed by:",content)):length(content)]="footer"}
-      
+
       tf$type=rep("",nrow(tf))
       tf$type[tf$part=="Intro"]="Intro"
       tf$type[tf$part=="breadcrumb"]="breadcrumb"
@@ -196,7 +201,7 @@ scrape_apesatlas <- function(path_to_save) {
       tf$type[which(unlist(lapply(1:length(content),function(x){grepl("|'''",substr(content[x],1,4),fixed = T)})))]="Table_heading"
       xn=which(tf$type=="Table_base_info")+1; xn=xn[-1]
       tf$type[xn]="Table_heading"
-      tf$type[which(grepl("|}",content,fixed = T))]="Table_end"
+      tf$type[which(grepl("|}", content,fixed = T))]="Table_end"
       tf$type[!grepl("[A-Za-z]",content) & tf$type==""]="empty"
       tf$type[which(grepl("https://www.iucnredlist.org",content))]="Table_source"
       tf$type[which(grepl("Conservation activities list",content))]="Table_source"
@@ -206,7 +211,7 @@ scrape_apesatlas <- function(path_to_save) {
 
       tf$type2=tf$type
       tf$type2[which(grepl("Table",tf$type))]="Table"
-      
+
       xtcs=which(tf$type=="Table_caption")
       xtce=which(tf$type=="Table_end")
       xtcn=1:length(xtcs)
@@ -217,10 +222,10 @@ scrape_apesatlas <- function(path_to_save) {
           tf$tabx[mm]<<-xtcn[y]
         })
       }
-      
+
       tf$content[tf$part=="Challenges"]=gsub("Impediment","Challenge",tf$content[tf$part=="Challenges"]) 
       tf$content[tf$part=="Challenges"]=gsub("Challenges","Challenge",tf$content[tf$part=="Challenges"])
-      
+
       if(length(unique(tf$tabx[tf$part=="Exposure_to_climate_change_impacts"]))>2){
         un=unique(tf$tabx[tf$part=="Exposure_to_climate_change_impacts"])[-1]
         tf$part[tf$part=="Exposure_to_climate_change_impacts" & tf$tabx==un[2]]="Exposure_to_climate_change_impacts_2"
@@ -233,11 +238,11 @@ scrape_apesatlas <- function(path_to_save) {
     xlog[[i]]<<-paste(xlog,collapse=";")
     return(tf)
   })
+  close(pb)
 
   #*********************************************************************************************************************************
-  # TABLES
+  # TABLES (ORIGINAL - unverändert)
   #*********************************************************************************************************************************
-  # "breadcrumb"
   bc=lapply(tf_all,function(x){
     subset(x,part=="breadcrumb")
   })
@@ -247,7 +252,7 @@ scrape_apesatlas <- function(path_to_save) {
   xx=matrix(unlist(strsplit(xx,split=" > ")),ncol=3,byrow=T)
   bread=data.frame(bread,xx[,1:2])
   colnames(bread)=c("idx","site","i","content","part","type","type2","tabx","region","country")
-  
+
   #------------------------------------------------------------------------------------------------------------------
   # "Site_characteristics"
   #------------------------------------------------------------------------------------------------------------------
@@ -332,13 +337,13 @@ scrape_apesatlas <- function(path_to_save) {
   clima2=subset(clima2,!is.na(site))
 
   #*********************************************************************************************************************************
-  # WRITE ALL TO ONE FILE
+  # WRITE ALL TO ONE FILE (ORIGINAL - unverändert)
   #*********************************************************************************************************************************
   page_sel=as.data.frame(matrix(unlist(lapply(strsplit(unlist(xlog),split=";"),function(x){x[1:3]})),ncol=3,byrow=T))
   colnames(page_sel)=c("idx","site","gibbonsite")
 
   write_xlsx(list(Site_characteristics=sitec,Ape_status=apest,Threats=treat,Conservation_activities=conac,Challenges=chall,Enablers=enabs,Behaviours=behav,Exposure_to_climate_1=clima,Exposure_to_climate_2=clima2),path = paste(path_to_save,"apesatlas_tables.xlsx",sep="/"), format_headers = F)
-  
+
   Site_characteristics <<- sitec
   Ape_status <<- apest
   Threats <<- treat
@@ -348,9 +353,8 @@ scrape_apesatlas <- function(path_to_save) {
   Behaviours <<- behav
   Exposure_to_climate_1 <<- clima
   Exposure_to_climate_2 <<- clima2
-  
-  #*********************************************************************************************************************************
+
   save(sitec,apest,treat,conac,chall,enabs,behav,clima,clima2,file = paste(path_to_save,"apesatlas_tables.Rdata",sep="/"))
-  #*********************************************************************************************************************************
+
   cat(paste0("\n\nResults for ",length(sel)," pages have been saved in the directory you specified.\nYou can also find the tables mentioned above in the workspace.\n\n"))
 }
