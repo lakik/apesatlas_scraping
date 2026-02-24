@@ -2,6 +2,8 @@
 # LOAD FUNCTIONS
 #*********************************************************************************************************************************
 # Function to get all page titles (ORIGINAL - unverändert)
+source("C:/Users/Mizero/Documents/Atlas scraped/wiki_fcs_20260220.R")
+
 fcs_get_all_page_titles <- function(api_url) {
   all_titles <- c()
   apcontinue <- NULL
@@ -254,15 +256,26 @@ scrape_apesatlas <- function(path_to_save) {
   bread=data.frame(bread,xx[,1:2])
   colnames(bread)=c("idx","site","i","content","part","type","type2","tabx","region","country")
 
-  #------------------------------------------------------------------------------------------------------------------
+  # ------------------------------------------------------------------------------------------------------------------
   # "Site_characteristics"
-  #------------------------------------------------------------------------------------------------------------------
+  # ------------------------------------------------------------------------------------------------------------------
+
+  # cat(paste0("\n The Site_characteristics table."))
+  # tabxn="Site_characteristics"
+  # tabs=lapply(tf_all, FUN=fcs_conv_wiki_to_df,tabxn,bc=bread)
+  # sitec=do.call(rbind,tabs)
+  # sitec$type=gsub(":","",sitec$type, fixed=T)
+  # sitec=subset(sitec,!is.na(site))
   cat(paste0("\n The Site_characteristics table."))
-  tabxn="Site_characteristics"
-  tabs=lapply(tf_all, FUN=fcs_conv_wiki_to_df,tabxn,bc=bread)
-  sitec=do.call(rbind,tabs)
-  sitec$type=gsub(":","",sitec$type, fixed=T)
-  sitec=subset(sitec,!is.na(site))
+  tabxn <- "Site_characteristics"
+  tabs <- lapply(tf_all, FUN = fcs_conv_wiki_to_df, tabxn, bc = bread)
+  sitec_raw <- do.call(rbind, tabs)
+  sitec_raw$type <- gsub(":", "", sitec_raw$type, fixed =T)
+  sitec_raw <- subset(sitec_raw, !is.na(site))
+  sitec <- reshape(sitec_raw, idvar = c("site", "country", "region"), timevar = "type", direction = "wide")
+  colnames(sitec) <- gsub("value.", "", colnames(sitec), fixed =T)
+  sitec$Coordinates <- gsub("Lat:|Lon:| ", "", sitec$Coordinates)
+  sitec <- sitec[, c("site", "country", "region","Species", "Area", "Coordinates", "Type of site", "Habitat types", "Type of governance")]
 
   #------------------------------------------------------------------------------------------------------------------
   # "Ape_status"
@@ -358,3 +371,4 @@ scrape_apesatlas <- function(path_to_save) {
 
   cat(paste0("\n\nResults for ",length(sel)," pages have been saved in the directory you specified.\nFor direct access, you can also find the tables in the workspace.\n\n"))
 }
+
